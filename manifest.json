@@ -1,0 +1,16 @@
+{
+  "name": "律師 AI 助手 — MCP 法律工具箱",
+  "short_name": "律師 AI 助手",
+  "description": "把 Claude 接上司法資料庫，書狀研究時間省一半",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#019AB3",
+  "orientation": "portrait",
+  "lang": "zh-Hant",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
