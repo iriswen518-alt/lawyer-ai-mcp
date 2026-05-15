@@ -1223,6 +1223,80 @@ body {
   line-height: 1.4;
 }
 
+/* ===== draft (書狀草稿生成器) ===== */
+.draft-card {
+  grid-column: 1 / -1;  /* 書狀 panel 佔滿整個 grid 寬度 */
+}
+.search-label textarea {
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-alt);
+  color: var(--text);
+  resize: vertical;
+  min-height: 60px;
+  width: 100%;
+  transition: all 0.15s ease;
+}
+.search-label textarea:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  background: var(--bg);
+  box-shadow: 0 0 0 3px rgba(1, 154, 179, 0.18);
+}
+
+.draft-output {
+  margin-top: 6px;
+}
+.draft-out-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.draft-out-label {
+  font-size: 13px;
+  color: var(--brand-deep);
+  font-weight: 600;
+}
+@media (prefers-color-scheme: dark) {
+  .draft-out-label { color: #d6ecf2; }
+}
+.draft-out-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.draft-out-actions .search-btn {
+  flex: 0 0 auto;
+}
+.search-btn.copied {
+  background: var(--brand-secondary) !important;
+  color: white;
+}
+.draft-prompt-output {
+  width: 100%;
+  min-height: 380px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-alt);
+  font-family: "SF Mono", Monaco, "Menlo", monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text);
+  resize: vertical;
+}
+.draft-prompt-output:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+}
+
 /* mobile tweaks */
 @media (max-width: 600px) {
   .topbar { padding: 18px 18px 14px; }

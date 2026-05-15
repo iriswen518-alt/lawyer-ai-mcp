@@ -35,6 +35,11 @@ const MAIN_TABS = [
     id: "tools",
     label: "常用工具",
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4l-5.6 5.6a2 2 0 0 0 2.8 2.8l5.6-5.6a4 4 0 0 0 5.4-5.4l-2.7 2.7-2.4-2.4 2.3-3.1z"/></svg>`
+  },
+  {
+    id: "draft",
+    label: "書狀草稿",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M9 13h6M9 17h4"/></svg>`
   }
 ];
 
@@ -165,6 +170,13 @@ const SEARCH_PANELS = [
     icon: "📚",
     desc: "點一下直接開法規全文，免再輸關鍵字。律師日常 25 部高頻法規。",
     inline: "commonLaws"
+  },
+  {
+    id: "draft",
+    title: "書狀草稿 prompt 生成器",
+    icon: "📝",
+    desc: "填入案件資料 → 生成 structured prompt → 一鍵複製給 Claude／其他 AI 工具撰寫草稿。完全在本頁進行，無資料外傳。",
+    inline: "draft"
   }
 ];
 
@@ -178,7 +190,8 @@ const PANEL_GROUPS = {
   deadline: "calc",
   interest: "calc",
   "common-laws": "tools",
-  holiday: "tools"
+  holiday: "tools",
+  draft: "draft"
 };
 SEARCH_PANELS.forEach(p => { p.group = PANEL_GROUPS[p.id] || "query"; });
 
@@ -188,22 +201,14 @@ const INLINE_RENDERERS = {
   company: renderInlineCompany,
   deadline: renderInlineDeadline,
   interest: renderInlineInterest,
-  commonLaws: renderInlineCommonLaws
+  commonLaws: renderInlineCommonLaws,
+  draft: renderInlineDraft
 };
 
-const GROUP_INTRO = {
-  query: { title: "法律查詢 · 直連台灣公開資料源", lead: "輸入關鍵字，跳到官方系統結果頁並自動標示。公司登記為即時 API。" },
-  calc: { title: "計算試算工具", lead: "依民法 §120-122、民訴法 §161 / §77-13 公式即時試算，可作律師備忘參考。" },
-  tools: { title: "常用工具", lead: "高頻法規一鍵跳轉，國定假日即時查。" }
-};
 
 function renderGroup(groupId) {
-  const intro = GROUP_INTRO[groupId] || { title: "", lead: "" };
   const panels = SEARCH_PANELS.filter(p => p.group === groupId);
   return `
-    <h2 class="section-title">${escapeHtml(intro.title)}</h2>
-    <p class="section-lead">${escapeHtml(intro.lead)}</p>
-
     <div class="search-grid">
       ${panels.map(p => p.inline ? (INLINE_RENDERERS[p.inline]?.() ?? "") : renderSearchPanel(p)).join("")}
     </div>
@@ -422,6 +427,248 @@ function renderInlineCommonLaws() {
     </div>
   `;
 }
+
+// 書狀類型清單
+const DRAFT_TYPES = [
+  { value: "民事起訴狀", placeholder: "民事起訴狀" },
+  { value: "民事答辯狀", placeholder: "民事答辯狀" },
+  { value: "民事補充理由狀", placeholder: "民事補充理由狀" },
+  { value: "民事上訴理由狀", placeholder: "民事上訴理由狀" },
+  { value: "民事抗告狀", placeholder: "民事抗告狀" },
+  { value: "民事準備書狀", placeholder: "民事準備書狀" },
+  { value: "刑事告訴狀", placeholder: "刑事告訴狀" },
+  { value: "刑事辯護意旨狀", placeholder: "刑事辯護意旨狀" },
+  { value: "刑事上訴理由狀", placeholder: "刑事上訴理由狀" },
+  { value: "刑事附帶民事起訴狀", placeholder: "刑事附帶民事起訴狀" },
+  { value: "行政訴訟起訴狀", placeholder: "行政訴訟起訴狀" },
+  { value: "行政訴訟答辯狀", placeholder: "行政訴訟答辯狀" },
+  { value: "聲請狀", placeholder: "聲請狀（具體事項）" },
+  { value: "強制執行聲請狀", placeholder: "強制執行聲請狀" },
+  { value: "支付命令聲請狀", placeholder: "支付命令聲請狀" },
+  { value: "假扣押聲請狀", placeholder: "假扣押聲請狀" },
+  { value: "假處分聲請狀", placeholder: "假處分聲請狀" },
+  { value: "存證信函", placeholder: "存證信函" }
+];
+
+function renderInlineDraft() {
+  const p = SEARCH_PANELS.find(x => x.id === "draft");
+  return `
+    <div class="search-card draft-card" data-panel="draft">
+      <h3><span class="search-icon">${p.icon}</span>${escapeHtml(p.title)}</h3>
+      <p class="tagline">${escapeHtml(p.desc)}</p>
+
+      <form class="search-form draft-form" id="draft-form">
+        <label class="search-label">
+          <span>書狀類型</span>
+          <select id="draft-type" required>
+            ${DRAFT_TYPES.map(t => `<option value="${escapeHtml(t.value)}">${escapeHtml(t.placeholder)}</option>`).join("")}
+          </select>
+        </label>
+
+        <label class="search-label">
+          <span>受理法院 / 案號（可選）</span>
+          <input type="text" id="draft-court" placeholder="例：臺灣臺北地方法院 113 年度訴字第 1234 號">
+        </label>
+
+        <label class="search-label">
+          <span>當事人欄</span>
+          <textarea id="draft-parties" rows="3" placeholder="原告：王大明（身分證字號、住址）&#10;被告：李小華（住址）&#10;訴訟代理人：○○○律師"></textarea>
+        </label>
+
+        <label class="search-label">
+          <span>案由 / 訴訟標的（可選）</span>
+          <input type="text" id="draft-cause" placeholder="例：給付買賣價金、確認界址、損害賠償等">
+        </label>
+
+        <label class="search-label">
+          <span>案件事實</span>
+          <textarea id="draft-facts" rows="6" placeholder="依時序整理事實經過，可標示證據編號：&#10;一、原告於 113 年 1 月 5 日與被告簽訂買賣契約（證 1）。&#10;二、被告應於 113 年 3 月 1 日交付標的物，惟迄今未交付。&#10;..."></textarea>
+        </label>
+
+        <label class="search-label">
+          <span>訴之聲明 / 答辯聲明</span>
+          <textarea id="draft-prayer" rows="3" placeholder="例：&#10;一、被告應給付原告新臺幣 100 萬元，及自起訴狀繕本送達翌日起至清償日止，按年息 5% 計算之利息。&#10;二、訴訟費用由被告負擔。&#10;三、原告願供擔保，請准宣告假執行。"></textarea>
+        </label>
+
+        <label class="search-label">
+          <span>法律爭點 / 主張的法條</span>
+          <textarea id="draft-issues" rows="3" placeholder="例：&#10;一、本件契約是否成立？民法 §153&#10;二、被告是否構成遲延給付？民法 §229、§232&#10;三、損害賠償範圍？民法 §216"></textarea>
+        </label>
+
+        <label class="search-label">
+          <span>證據清單（可選）</span>
+          <textarea id="draft-evidence" rows="3" placeholder="證 1：買賣契約書影本一份&#10;證 2：銀行匯款單影本一份&#10;證 3：對話紀錄截圖&#10;證 4：存證信函影本"></textarea>
+        </label>
+
+        <label class="search-label">
+          <span>對造主張 / 補充說明（可選）</span>
+          <textarea id="draft-opposing" rows="3" placeholder="對造已主張的事實或法律見解，或本書狀需特別說明的事項"></textarea>
+        </label>
+
+        <div class="search-actions">
+          <button type="submit" class="search-btn primary">產生 Prompt</button>
+          <button type="button" class="search-btn secondary" id="draft-clear-btn">清空表單</button>
+        </div>
+      </form>
+
+      <div id="draft-result" class="inline-result"></div>
+    </div>
+  `;
+}
+
+function buildDraftPrompt(data) {
+  const sections = [];
+  sections.push(`你是熟悉臺灣法律實務的律師助手。請依以下案件資料草擬一份「${data.type}」初稿。`);
+  sections.push("");
+  sections.push("【書狀類型】");
+  sections.push(data.type);
+
+  if (data.court) {
+    sections.push("");
+    sections.push("【受理法院 / 案號】");
+    sections.push(data.court);
+  }
+
+  if (data.parties) {
+    sections.push("");
+    sections.push("【當事人】");
+    sections.push(data.parties);
+  }
+
+  if (data.cause) {
+    sections.push("");
+    sections.push("【案由 / 訴訟標的】");
+    sections.push(data.cause);
+  }
+
+  if (data.facts) {
+    sections.push("");
+    sections.push("【案件事實】");
+    sections.push(data.facts);
+  }
+
+  if (data.prayer) {
+    sections.push("");
+    sections.push(/答辯|辯護/.test(data.type) ? "【答辯聲明】" : "【訴之聲明 / 聲請事項】");
+    sections.push(data.prayer);
+  }
+
+  if (data.issues) {
+    sections.push("");
+    sections.push("【法律爭點與主張法條】");
+    sections.push(data.issues);
+  }
+
+  if (data.evidence) {
+    sections.push("");
+    sections.push("【證據清單】");
+    sections.push(data.evidence);
+  }
+
+  if (data.opposing) {
+    sections.push("");
+    sections.push("【對造主張 / 補充說明】");
+    sections.push(data.opposing);
+  }
+
+  sections.push("");
+  sections.push("【草擬要求】");
+  sections.push("請以臺灣法律實務常見格式撰寫，包含以下段落：");
+  sections.push("1. 標題（XX書狀）");
+  sections.push("2. 受理法院、案號、案由");
+  sections.push("3. 當事人欄");
+  sections.push("4. 「事實」段——依時序整理事實，附證據編號");
+  sections.push("5. 「理由」段——分項論述每個爭點，引用法條條文、相關裁判要旨（若有把握請附字號）");
+  sections.push("6. 「聲明 / 結論」段——明確的訴之聲明或請求事項");
+  sections.push("7. 結尾——「此致 ○○法院公鑒」、日期、具狀人");
+  sections.push("");
+  sections.push("注意事項：");
+  sections.push("- 法條引用使用「民法第 184 條」或「民法 §184」格式，並以法務部全國法規資料庫最新版本為準。");
+  sections.push("- 引用裁判書請標示完整字號（如「最高法院 110 年度台上字第 1234 號民事判決」）。");
+  sections.push("- 不要捏造法條條號或裁判字號；若不確定請以「（請補充：…）」標示，由律師補入。");
+  sections.push("- 文字以正式法律用語為主，避免口語化。");
+  sections.push("- 若資料不足以撐起某段，於該處保留「（請補充：…）」標籤，便於律師補強。");
+  sections.push("");
+  sections.push("產出後請另列「修正建議與檢查清單」（5-8 條），提示可能遺漏的論點、可援用的判決或可補強的證據。");
+
+  return sections.join("\n");
+}
+
+function runDraftGenerate() {
+  const data = {
+    type: document.getElementById("draft-type")?.value || "",
+    court: (document.getElementById("draft-court")?.value || "").trim(),
+    parties: (document.getElementById("draft-parties")?.value || "").trim(),
+    cause: (document.getElementById("draft-cause")?.value || "").trim(),
+    facts: (document.getElementById("draft-facts")?.value || "").trim(),
+    prayer: (document.getElementById("draft-prayer")?.value || "").trim(),
+    issues: (document.getElementById("draft-issues")?.value || "").trim(),
+    evidence: (document.getElementById("draft-evidence")?.value || "").trim(),
+    opposing: (document.getElementById("draft-opposing")?.value || "").trim()
+  };
+  const out = document.getElementById("draft-result");
+  if (!out) return;
+  if (!data.type) {
+    out.innerHTML = `<p class="error">請至少選擇書狀類型</p>`;
+    return;
+  }
+  if (!data.facts && !data.prayer) {
+    out.innerHTML = `<p class="error">請至少填寫「案件事實」或「訴之聲明」其中一項</p>`;
+    return;
+  }
+  const prompt = buildDraftPrompt(data);
+  out.innerHTML = `
+    <div class="draft-output">
+      <div class="draft-out-head">
+        <div class="draft-out-label">已生成 Prompt（${prompt.length.toLocaleString()} 字）</div>
+        <div class="draft-out-actions">
+          <button type="button" class="search-btn primary" id="draft-copy-btn">複製到剪貼簿</button>
+          <button type="button" class="search-btn secondary" id="draft-open-claude-btn">開 Claude.ai</button>
+        </div>
+      </div>
+      <textarea class="draft-prompt-output" readonly>${escapeHtml(prompt)}</textarea>
+      <p class="data-credit">本頁不會把資料送到任何伺服器。複製後請貼到你的 AI 工具（Claude / ChatGPT / Gemini 皆可）執行。生成草稿仍須律師審閱、查驗法條與裁判書字號。</p>
+    </div>
+  `;
+}
+
+document.addEventListener("submit", e => {
+  if (e.target?.id !== "draft-form") return;
+  e.preventDefault();
+  runDraftGenerate();
+});
+
+document.addEventListener("click", e => {
+  if (e.target.closest("#draft-clear-btn")) {
+    ["draft-court", "draft-parties", "draft-cause", "draft-facts", "draft-prayer", "draft-issues", "draft-evidence", "draft-opposing"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
+    const out = document.getElementById("draft-result");
+    if (out) out.innerHTML = "";
+    return;
+  }
+  if (e.target.closest("#draft-copy-btn")) {
+    const ta = document.querySelector(".draft-prompt-output");
+    if (!ta) return;
+    navigator.clipboard.writeText(ta.value).then(() => {
+      const btn = document.getElementById("draft-copy-btn");
+      if (!btn) return;
+      const original = btn.textContent;
+      btn.textContent = "已複製 ✓";
+      btn.classList.add("copied");
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.classList.remove("copied");
+      }, 1800);
+    });
+    return;
+  }
+  if (e.target.closest("#draft-open-claude-btn")) {
+    window.open("https://claude.ai/new", "_blank", "noopener");
+    return;
+  }
+});
 
 function renderMainNav(activeId) {
   return MAIN_TABS.map(t => `
