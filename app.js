@@ -19,9 +19,29 @@ function appendTextFragment(url, keyword) {
 }
 
 // ===== Search panels — 直接呼叫公開資料源 =====
+// ===== 主分頁設定（仿 morning_board）=====
+const MAIN_TABS = [
+  {
+    id: "query",
+    label: "法律查詢",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>`
+  },
+  {
+    id: "calc",
+    label: "計算試算",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h2M13 15h2M9 19h6"/></svg>`
+  },
+  {
+    id: "tools",
+    label: "常用工具",
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4l-5.6 5.6a2 2 0 0 0 2.8 2.8l5.6-5.6a4 4 0 0 0 5.4-5.4l-2.7 2.7-2.4-2.4 2.3-3.1z"/></svg>`
+  }
+];
+
 const SEARCH_PANELS = [
   {
     id: "law",
+    group: "query",
     title: "法規條文",
     icon: "📖",
     desc: "搜尋全國法規資料庫（11,700+ 部法規）。結果在新分頁開啟，會自動高亮關鍵字。",
@@ -148,6 +168,20 @@ const SEARCH_PANELS = [
   }
 ];
 
+// panel id → tab group 對應表（在 SEARCH_PANELS 後集中設定，避免散落各處）
+const PANEL_GROUPS = {
+  law: "query",
+  judgment: "query",
+  interp: "query",
+  company: "query",
+  treaty: "query",
+  deadline: "calc",
+  interest: "calc",
+  "common-laws": "tools",
+  holiday: "tools"
+};
+SEARCH_PANELS.forEach(p => { p.group = PANEL_GROUPS[p.id] || "query"; });
+
 // 多個 inline 面板的 dispatcher：每種 inline 各自一個 renderer
 const INLINE_RENDERERS = {
   holiday: renderInlineHoliday,
@@ -157,13 +191,21 @@ const INLINE_RENDERERS = {
   commonLaws: renderInlineCommonLaws
 };
 
-function renderSearch() {
+const GROUP_INTRO = {
+  query: { title: "法律查詢 · 直連台灣公開資料源", lead: "輸入關鍵字，跳到官方系統結果頁並自動標示。公司登記為即時 API。" },
+  calc: { title: "計算試算工具", lead: "依民法 §120-122、民訴法 §161 / §77-13 公式即時試算，可作律師備忘參考。" },
+  tools: { title: "常用工具", lead: "高頻法規一鍵跳轉，國定假日即時查。" }
+};
+
+function renderGroup(groupId) {
+  const intro = GROUP_INTRO[groupId] || { title: "", lead: "" };
+  const panels = SEARCH_PANELS.filter(p => p.group === groupId);
   return `
-    <h2 class="section-title">立即查詢 · 直連台灣公開資料源</h2>
-    <p class="section-lead">輸入關鍵字，按下按鈕即跳到官方系統的結果頁，自動高亮關鍵字。國定假日為本頁即時顯示。所有資料皆來自官方公開來源，免費可商用。</p>
+    <h2 class="section-title">${escapeHtml(intro.title)}</h2>
+    <p class="section-lead">${escapeHtml(intro.lead)}</p>
 
     <div class="search-grid">
-      ${SEARCH_PANELS.map(p => p.inline ? (INLINE_RENDERERS[p.inline]?.() ?? "") : renderSearchPanel(p)).join("")}
+      ${panels.map(p => p.inline ? (INLINE_RENDERERS[p.inline]?.() ?? "") : renderSearchPanel(p)).join("")}
     </div>
   `;
 }
@@ -381,16 +423,24 @@ function renderInlineCommonLaws() {
   `;
 }
 
-const RENDERERS = {
-  search: renderSearch
-};
+function renderMainNav(activeId) {
+  return MAIN_TABS.map(t => `
+    <button class="main-tab${t.id === activeId ? " active" : ""}" data-tab="${escapeHtml(t.id)}">
+      <span class="tab-icon" aria-hidden="true">${t.icon}</span>
+      <span>${escapeHtml(t.label)}</span>
+    </button>
+  `).join("");
+}
 
 function switchTab(name) {
-  $$(".main-tab").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
-  const fn = RENDERERS[name];
-  $("#content").innerHTML = fn ? fn() : "";
+  const isValid = MAIN_TABS.some(t => t.id === name);
+  const tabId = isValid ? name : MAIN_TABS[0].id;
+  const navEl = document.getElementById("main-nav");
+  if (navEl) navEl.innerHTML = renderMainNav(tabId);
+  const contentEl = document.getElementById("content");
+  if (contentEl) contentEl.innerHTML = renderGroup(tabId);
   window.scrollTo({ top: 0, behavior: "smooth" });
-  history.replaceState(null, "", "#" + name);
+  history.replaceState(null, "", "#" + tabId);
 }
 
 // ===== copy buttons =====
@@ -1015,8 +1065,8 @@ backTop.addEventListener("click", e => {
 });
 
 // ===== boot =====
-const initial = (location.hash || "#search").slice(1);
-switchTab(RENDERERS[initial] ? initial : "search");
+const initial = (location.hash || "#query").slice(1);
+switchTab(MAIN_TABS.some(t => t.id === initial) ? initial : "query");
 
 // ===== service worker =====
 if ("serviceWorker" in navigator) {
