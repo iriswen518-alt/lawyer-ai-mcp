@@ -31,7 +31,7 @@ const SEARCH_PANELS = [
     btnLabel: "查全國法規資料庫",
     handler: ({ "law-kw": kw }) => {
       if (!kw) return null;
-      const url = `https://law.moj.gov.tw/Law/LawSearchResult.aspx?ty=L&kw=${encodeURIComponent(kw)}`;
+      const url = `https://law.moj.gov.tw/Law/LawSearchResult.aspx?ty=ONEBAR&kw=${encodeURIComponent(kw)}&sSearch=`;
       return appendTextFragment(url, kw);
     }
   },
@@ -64,37 +64,16 @@ const SEARCH_PANELS = [
     btnLabel: "查憲法法庭",
     handler: ({ "int-kw": kw }) => {
       if (!kw) return null;
-      const url = `https://cons.judicial.gov.tw/judcurrentNew1.aspx?fid=156&searchValue=${encodeURIComponent(kw)}`;
+      const url = `https://cons.judicial.gov.tw/Search.aspx?fid=2126&cx=005132724086774517517:yimqgql50oj&q=${encodeURIComponent(kw)}`;
       return appendTextFragment(url, kw);
     }
   },
   {
     id: "company",
-    title: "公司登記查詢",
+    title: "公司登記查詢（即時 API）",
     icon: "🏢",
-    desc: "g0v 公司資料庫，輸入公司名或統一編號，自動跳到該公司頁面並高亮關鍵字。",
-    fields: [
-      { id: "co-kw", label: "公司名稱或統一編號", placeholder: "例：聯發科、台灣積體電路、22099131" }
-    ],
-    btnLabel: "查公司登記（g0v）",
-    altBtn: {
-      label: "經濟部商業司官方",
-      url: kw => {
-        const v = (kw["co-kw"] || "").trim();
-        if (!v) return null;
-        if (/^\d{8}$/.test(v)) return `https://findbiz.nat.gov.tw/fts/query/QueryCmpyDetail/queryCmpyDetail.do?banNo=${v}`;
-        return `https://findbiz.nat.gov.tw/fts/query/QueryList/queryList.do?searchTerm=${encodeURIComponent(v)}`;
-      }
-    },
-    handler: ({ "co-kw": kw }) => {
-      if (!kw) return null;
-      const trimmed = kw.trim();
-      if (/^\d{8}$/.test(trimmed)) {
-        return `https://company.g0v.ronny.tw/id/${trimmed}`;
-      }
-      const url = `https://company.g0v.ronny.tw/search?q=${encodeURIComponent(trimmed)}`;
-      return appendTextFragment(url, trimmed);
-    }
+    desc: "直接從 g0v 公司資料庫拉取登記資料，輸入公司名或統一編號，本頁立即顯示董事、營業項目、地址。",
+    inline: "company"
   },
   {
     id: "treaty",
@@ -113,12 +92,18 @@ const SEARCH_PANELS = [
   },
   {
     id: "holiday",
-    title: "國定假日（即時查）",
+    title: "國定假日（即時 API）",
     icon: "📅",
     desc: "本頁直接從 TaiwanCalendar 取資料，輸入年份即時顯示連假與補班日。",
-    inline: true
+    inline: "holiday"
   }
 ];
+
+// 多個 inline 面板的 dispatcher：每種 inline 各自一個 renderer
+const INLINE_RENDERERS = {
+  holiday: renderInlineHoliday,
+  company: renderInlineCompany
+};
 
 function renderSearch() {
   return `
@@ -126,7 +111,7 @@ function renderSearch() {
     <p class="section-lead">輸入關鍵字，按下按鈕即跳到官方系統的結果頁，自動高亮關鍵字。國定假日為本頁即時顯示。所有資料皆來自官方公開來源，免費可商用。</p>
 
     <div class="search-grid">
-      ${SEARCH_PANELS.map(p => p.inline ? renderInlineHoliday() : renderSearchPanel(p)).join("")}
+      ${SEARCH_PANELS.map(p => p.inline ? (INLINE_RENDERERS[p.inline]?.() ?? "") : renderSearchPanel(p)).join("")}
     </div>
   `;
 }
@@ -154,10 +139,11 @@ function renderSearchPanel(p) {
 
 function renderInlineHoliday() {
   const thisYear = new Date().getFullYear();
+  const p = SEARCH_PANELS.find(x => x.id === "holiday");
   return `
     <div class="search-card" data-panel="holiday">
-      <h3><span class="search-icon">📅</span>國定假日（即時查）</h3>
-      <p class="tagline">本頁直接從 TaiwanCalendar 取資料，輸入年份即時顯示連假與補班日。</p>
+      <h3><span class="search-icon">${p.icon}</span>${escapeHtml(p.title)}</h3>
+      <p class="tagline">${escapeHtml(p.desc)}</p>
       <form class="search-form" id="holiday-form">
         <label class="search-label">
           <span>年份</span>
@@ -168,6 +154,27 @@ function renderInlineHoliday() {
         </div>
       </form>
       <div id="holiday-result" class="inline-result"></div>
+    </div>
+  `;
+}
+
+function renderInlineCompany() {
+  const p = SEARCH_PANELS.find(x => x.id === "company");
+  return `
+    <div class="search-card" data-panel="company">
+      <h3><span class="search-icon">${p.icon}</span>${escapeHtml(p.title)}</h3>
+      <p class="tagline">${escapeHtml(p.desc)}</p>
+      <form class="search-form" id="company-form">
+        <label class="search-label">
+          <span>公司名稱或統一編號</span>
+          <input type="text" id="company-kw" name="kw" placeholder="例：聯發科、台灣積體電路、22099131" autocomplete="off">
+        </label>
+        <div class="search-actions">
+          <button type="submit" class="search-btn primary">即時查詢</button>
+          <button type="button" class="search-btn secondary" id="company-alt-btn">經濟部商業司官方</button>
+        </div>
+      </form>
+      <div id="company-result" class="inline-result"></div>
     </div>
   `;
 }
@@ -219,6 +226,10 @@ document.addEventListener("submit", e => {
     runHolidayLookup();
     return;
   }
+  if (form.id === "company-form") {
+    runCompanyLookup();
+    return;
+  }
 
   const panel = SEARCH_PANELS.find(p => p.id === panelId);
   if (!panel) return;
@@ -239,6 +250,16 @@ document.addEventListener("click", e => {
   panel.fields.forEach(f => { data[f.id] = (form.elements[f.id]?.value || "").trim(); });
   const url = panel.altBtn.url(data);
   if (url) window.open(url, "_blank", "noopener");
+});
+
+document.addEventListener("click", e => {
+  if (!e.target.closest("#company-alt-btn")) return;
+  const v = (document.getElementById("company-kw")?.value || "").trim();
+  if (!v) return;
+  const url = /^\d{8}$/.test(v)
+    ? `https://findbiz.nat.gov.tw/fts/query/QueryCmpyDetail/queryCmpyDetail.do?banNo=${v}`
+    : `https://findbiz.nat.gov.tw/fts/query/QueryList/queryList.do?searchTerm=${encodeURIComponent(v)}`;
+  window.open(url, "_blank", "noopener");
 });
 
 // ===== holiday inline lookup =====
@@ -308,6 +329,209 @@ async function runHolidayLookup() {
     out.innerHTML = `<p class="error">查詢失敗：${escapeHtml(String(err.message || err))}</p>`;
   }
 }
+
+// ===== company inline lookup =====
+async function runCompanyLookup() {
+  const kw = (document.getElementById("company-kw")?.value || "").trim();
+  const out = document.getElementById("company-result");
+  if (!out) return;
+  if (!kw) {
+    out.innerHTML = `<p class="error">請輸入公司名稱或 8 碼統一編號</p>`;
+    return;
+  }
+  out.innerHTML = `<p class="loading">查詢中…（資料來自 g0v 公司資料庫）</p>`;
+  try {
+    const isId = /^\d{8}$/.test(kw);
+    const apiUrl = isId
+      ? `https://company.g0v.ronny.tw/api/show/${kw}`
+      : `https://company.g0v.ronny.tw/api/search?q=${encodeURIComponent(kw)}&page=1`;
+    const res = await fetch(apiUrl);
+    if (!res.ok) throw new Error("資料源回傳 " + res.status);
+    const r = await res.json();
+
+    if (isId) {
+      const d = r.data;
+      if (!d || !d["公司名稱"]) {
+        out.innerHTML = `<p class="error">查無此統一編號 ${escapeHtml(kw)}</p>`;
+        return;
+      }
+      out.innerHTML = renderCompanyCard(d, kw);
+    } else {
+      const list = Array.isArray(r.data) ? r.data : [];
+      if (list.length === 0) {
+        out.innerHTML = `<p class="error">查無 「${escapeHtml(kw)}」 的公司</p>`;
+        return;
+      }
+      if (list.length === 1) {
+        out.innerHTML = renderCompanyCard(list[0], list[0]["統一編號"] || "");
+      } else {
+        out.innerHTML = renderCompanyList(list, kw, r.found);
+      }
+    }
+  } catch (err) {
+    out.innerHTML = `<p class="error">查詢失敗：${escapeHtml(String(err.message || err))}</p>`;
+  }
+}
+
+function normCompany(c) {
+  // 公司 (公司名稱) 與 商業 (商業名稱) 兩類資料結構不同，這裡合併欄位
+  return {
+    name: c["公司名稱"] || c["商業名稱"] || "—",
+    representative: c["代表人姓名"] || c["負責人姓名"] || "",
+    address: c["公司所在地"] || c["地址"] || "",
+    capital: c["實收資本額(元)"] || c["資本額(元)"] || "",
+    capitalTotal: c["資本總額(元)"] || "",
+    shares: c["已發行股份總數(股)"] || "",
+    status: (c["登記現況"] || c["現況"] || "").trim(),
+    founded: fmtTwDate(c["核准設立日期"]),
+    lastChange: fmtTwDate(c["最後核准變更日期"] || c["最近異動日期"]),
+    authority: c["登記機關"] || "",
+    orgType: c["組織類型"] || "",
+    enName: c["章程所訂外文公司名稱"] || "",
+    isShop: !!c["商業名稱"] && !c["公司名稱"]
+  };
+}
+
+function renderCompanyList(list, kw, total) {
+  return `
+    <p class="company-list-hint">找到 ${escapeHtml(String(total || list.length))} 筆，顯示前 ${list.length} 筆，點名稱看詳情：</p>
+    <ul class="company-list">
+      ${list.slice(0, 10).map(c => {
+        const n = normCompany(c);
+        const tag = n.isShop ? "（商業）" : "";
+        return `
+        <li>
+          <button type="button" class="company-pick" data-id="${escapeHtml(c["統一編號"] || "")}">${escapeHtml(n.name)}${tag ? ` <span class="company-tag">${tag}</span>` : ""}</button>
+          <span class="company-meta">${escapeHtml(c["統一編號"] || "")}${n.status ? " · " + escapeHtml(n.status) : ""}${n.address ? " · " + escapeHtml(n.address) : ""}</span>
+        </li>`;
+      }).join("")}
+    </ul>
+  `;
+}
+
+function renderCompanyCard(d, id) {
+  const n = normCompany(d);
+  const items = Array.isArray(d["所營事業資料"]) ? d["所營事業資料"] : [];
+  const dirs = Array.isArray(d["董監事名單"]) ? d["董監事名單"] : [];
+  const mgrs = Array.isArray(d["經理人名單"]) ? d["經理人名單"] : [];
+  // 商業類「營業項目」是大字串，要解析
+  const shopItems = (!items.length && typeof d["營業項目"] === "string")
+    ? parseShopBusinessItems(d["營業項目"]) : [];
+  const statusClass = /設立|核准/.test(n.status) ? "ok"
+    : /撤銷|解散|廢止|停業|歇業/.test(n.status) ? "bad" : "";
+
+  return `
+    <div class="company-card">
+      <div class="company-head">
+        <h4 class="company-name">${escapeHtml(n.name)}${n.isShop ? ' <span class="company-tag">商業</span>' : ""}</h4>
+        ${n.status ? `<span class="company-status ${statusClass}">${escapeHtml(n.status)}</span>` : ""}
+      </div>
+      ${n.enName ? `<p class="company-en">${escapeHtml(n.enName)}</p>` : ""}
+
+      <dl class="company-facts">
+        ${id ? `<dt>統一編號</dt><dd>${escapeHtml(id)}</dd>` : ""}
+        ${n.orgType ? `<dt>組織類型</dt><dd>${escapeHtml(n.orgType)}</dd>` : ""}
+        ${n.representative ? `<dt>${n.isShop ? "負責人" : "代表人"}</dt><dd>${escapeHtml(n.representative)}</dd>` : ""}
+        ${n.address ? `<dt>地址</dt><dd>${escapeHtml(n.address)}</dd>` : ""}
+        ${n.capital ? `<dt>${n.isShop ? "資本額" : "實收資本"}</dt><dd>NT$ ${escapeHtml(n.capital)}</dd>` : ""}
+        ${n.capitalTotal ? `<dt>資本總額</dt><dd>NT$ ${escapeHtml(n.capitalTotal)}</dd>` : ""}
+        ${n.shares ? `<dt>已發行股數</dt><dd>${escapeHtml(n.shares)} 股</dd>` : ""}
+        ${n.founded ? `<dt>核准設立</dt><dd>${escapeHtml(n.founded)}</dd>` : ""}
+        ${n.lastChange ? `<dt>${n.isShop ? "最近異動" : "最後變更"}</dt><dd>${escapeHtml(n.lastChange)}</dd>` : ""}
+        ${n.authority ? `<dt>登記機關</dt><dd>${escapeHtml(n.authority)}</dd>` : ""}
+      </dl>
+
+      ${dirs.length ? `
+        <details class="company-section" open>
+          <summary>董監事名單（${dirs.length} 人）</summary>
+          <ul class="company-people">
+            ${dirs.slice(0, 20).map(p => `
+              <li>
+                <span class="role">${escapeHtml(p["職稱"] || "")}</span>
+                <span class="name">${escapeHtml(p["姓名"] || "")}</span>
+                ${p["所代表法人"] ? `<span class="rep">代表 ${escapeHtml(p["所代表法人"])}</span>` : ""}
+                ${p["出資額"] ? `<span class="share">${escapeHtml(p["出資額"])}</span>` : ""}
+              </li>
+            `).join("")}
+            ${dirs.length > 20 ? `<li class="more">…另有 ${dirs.length - 20} 人</li>` : ""}
+          </ul>
+        </details>
+      ` : ""}
+
+      ${mgrs.length ? `
+        <details class="company-section">
+          <summary>經理人名單（${mgrs.length} 人）</summary>
+          <ul class="company-people">
+            ${mgrs.slice(0, 15).map(p => `
+              <li>
+                <span class="name">${escapeHtml(p["姓名"] || "")}</span>
+                ${p["到職日期"] ? `<span class="rep">到職 ${escapeHtml(fmtTwDate(p["到職日期"]))}</span>` : ""}
+              </li>
+            `).join("")}
+            ${mgrs.length > 15 ? `<li class="more">…另有 ${mgrs.length - 15} 人</li>` : ""}
+          </ul>
+        </details>
+      ` : ""}
+
+      ${items.length ? `
+        <details class="company-section">
+          <summary>所營事業（${items.length} 項）</summary>
+          <ul class="company-items">
+            ${items.slice(0, 20).map(it => Array.isArray(it) ? `<li><code>${escapeHtml(it[0] || "")}</code> ${escapeHtml(it[1] || "")}</li>` : `<li>${escapeHtml(String(it))}</li>`).join("")}
+            ${items.length > 20 ? `<li class="more">…另有 ${items.length - 20} 項</li>` : ""}
+          </ul>
+        </details>
+      ` : ""}
+
+      ${shopItems.length ? `
+        <details class="company-section" open>
+          <summary>營業項目（${shopItems.length} 項）</summary>
+          <ul class="company-items">
+            ${shopItems.map(it => `<li><code>${escapeHtml(it.code)}</code> ${escapeHtml(it.name)}</li>`).join("")}
+          </ul>
+        </details>
+      ` : ""}
+
+      <p class="data-credit">資料來源：<a href="https://company.g0v.ronny.tw/id/${escapeHtml(id || "")}" target="_blank" rel="noopener">g0v 公司資料庫</a>（資料同步自經濟部商業司）</p>
+    </div>
+  `;
+}
+
+function parseShopBusinessItems(s) {
+  // 商業類「營業項目」是大字串，含序號 + 行業代碼（F213060 等）+ 行業名稱，以多重換行分隔
+  // 例：" 1\n\nF213060\n\n電信器材零售業 \n 2\n\nF...\n\n..."
+  const lines = s.split(/\n+/).map(x => x.trim()).filter(Boolean);
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    // 行業代碼：1 個英文字母 + 6 位數字
+    if (/^[A-Z]\d{6}$/.test(lines[i])) {
+      out.push({ code: lines[i], name: lines[i + 1] || "" });
+      i++; // 跳過下一行（行業名稱）
+    }
+  }
+  return out;
+}
+
+function fmtTwDate(o) {
+  if (!o) return "";
+  if (typeof o === "string") return o;
+  if (typeof o === "object" && o.year) {
+    const m = String(o.month || 1).padStart(2, "0");
+    const d = String(o.day || 1).padStart(2, "0");
+    return `${o.year}/${m}/${d}`;
+  }
+  return "";
+}
+
+document.addEventListener("click", e => {
+  const pick = e.target.closest(".company-pick");
+  if (!pick) return;
+  const id = pick.dataset.id;
+  if (!id) return;
+  const input = document.getElementById("company-kw");
+  if (input) input.value = id;
+  runCompanyLookup();
+});
 
 function groupConsecutive(days) {
   const groups = [];

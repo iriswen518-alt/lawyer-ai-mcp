@@ -836,6 +836,178 @@ body {
   text-decoration: none;
 }
 
+/* ===== company card ===== */
+.company-card {
+  font-size: 13.5px;
+}
+.company-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.company-name {
+  margin: 0;
+  font-size: 16px;
+  color: var(--brand-deep);
+  font-weight: 700;
+  line-height: 1.3;
+}
+@media (prefers-color-scheme: dark) {
+  .company-name { color: #d6ecf2; }
+}
+.company-status {
+  font-size: 11.5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-softer);
+  color: var(--brand-deep);
+  white-space: nowrap;
+}
+.company-status.ok { background: #def4e1; color: #1e7a3e; }
+.company-status.bad { background: #fde2e2; color: #a02020; }
+@media (prefers-color-scheme: dark) {
+  .company-status { background: #173943; color: #cfe8ee; }
+  .company-status.ok { background: #173f24; color: #8be3a8; }
+  .company-status.bad { background: #3d1c1c; color: #ff9b9b; }
+}
+.company-en {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--text-mute);
+  font-style: italic;
+}
+.company-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 14px;
+  row-gap: 4px;
+  margin: 10px 0 14px;
+  font-size: 13px;
+}
+.company-facts dt {
+  color: var(--text-mute);
+  font-weight: 500;
+}
+.company-facts dd {
+  margin: 0;
+  color: var(--text);
+}
+.company-section {
+  margin: 8px 0;
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+}
+.company-section summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--brand-primary);
+  font-weight: 600;
+  padding: 4px 0;
+}
+.company-section summary:hover { color: var(--brand-deep); }
+.company-people, .company-items {
+  list-style: none;
+  padding: 6px 0 0;
+  margin: 0;
+  font-size: 12.5px;
+}
+.company-people li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border);
+  align-items: baseline;
+}
+.company-people li:last-child { border-bottom: none; }
+.company-people .role {
+  color: var(--text-mute);
+  font-size: 11.5px;
+  min-width: 56px;
+}
+.company-people .name {
+  font-weight: 600;
+  color: var(--text);
+}
+.company-people .rep, .company-people .share {
+  color: var(--text-mute);
+  font-size: 11.5px;
+}
+.company-people .more, .company-items .more {
+  color: var(--text-mute);
+  font-style: italic;
+  border: none;
+}
+.company-items li {
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: 12.5px;
+}
+.company-items li:last-child { border-bottom: none; }
+.company-items code {
+  background: var(--accent-softer);
+  color: var(--brand-deep);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: "SF Mono", Monaco, "Menlo", monospace;
+  font-size: 11.5px;
+  margin-right: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  .company-items code { background: #173943; color: #cfe8ee; }
+}
+.company-list-hint {
+  font-size: 12.5px;
+  color: var(--text-mute);
+  margin: 0 0 8px;
+}
+.company-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.company-list li {
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.company-list li:last-child { border-bottom: none; }
+.company-pick {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--brand-primary);
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  text-align: left;
+  display: block;
+  width: 100%;
+}
+.company-pick:hover { color: var(--brand-deep); text-decoration: underline; }
+.company-meta {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-mute);
+  margin-top: 2px;
+}
+.company-tag {
+  display: inline-block;
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--accent-softer);
+  color: var(--brand-deep);
+  margin-left: 6px;
+  vertical-align: middle;
+  font-weight: 500;
+}
+@media (prefers-color-scheme: dark) {
+  .company-tag { background: #173943; color: #cfe8ee; }
+}
+
 /* mobile tweaks */
 @media (max-width: 600px) {
   .topbar { padding: 18px 18px 14px; }
