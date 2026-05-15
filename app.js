@@ -39,18 +39,46 @@ const SEARCH_PANELS = [
     id: "judgment",
     title: "裁判書搜尋",
     icon: "⚖",
-    desc: "司法院裁判書全文檢索系統。LawSnote 結果會直接在新分頁標示關鍵字。",
+    desc: "司法院裁判書全文檢索。可同時指定法院別與案類，LawSnote 結果會自動標示關鍵字。",
     fields: [
-      { id: "jud-kw", label: "關鍵字 / 法條 / 案由", placeholder: "例：預售屋 遲延交屋、刑法277" }
+      {
+        id: "jud-court", label: "法院別（可選）", type: "select",
+        options: [
+          { value: "", label: "全部法院" },
+          { value: "最高法院", label: "最高法院" },
+          { value: "最高行政法院", label: "最高行政法院" },
+          { value: "高等法院", label: "高等法院" },
+          { value: "高等行政法院", label: "高等行政法院" },
+          { value: "地方法院", label: "地方法院" },
+          { value: "智慧財產及商業法院", label: "智財及商業法院" },
+          { value: "懲戒法院", label: "懲戒法院" }
+        ]
+      },
+      {
+        id: "jud-type", label: "案類（可選）", type: "select",
+        options: [
+          { value: "", label: "全部案類" },
+          { value: "民事", label: "民事" },
+          { value: "刑事", label: "刑事" },
+          { value: "行政", label: "行政" },
+          { value: "家事", label: "家事" }
+        ]
+      },
+      { id: "jud-kw", label: "關鍵字 / 法條 / 案由", placeholder: "例：預售屋 遲延交屋、刑法277、110台上1234" }
     ],
     btnLabel: "查 LawSnote（含關鍵字標示）",
     altBtn: {
       label: "改用司法院官方系統",
-      url: kw => kw["jud-kw"] ? `https://judgment.judicial.gov.tw/FJUD/qryresultlst.aspx?ty=JUDBOOK&kw=${encodeURIComponent(kw["jud-kw"])}` : null
+      url: ({ "jud-kw": kw, "jud-court": court, "jud-type": type }) => {
+        const combined = [court, type, kw].filter(Boolean).join(" ");
+        if (!combined) return null;
+        return `https://judgment.judicial.gov.tw/FJUD/qryresultlst.aspx?ty=JUDBOOK&kw=${encodeURIComponent(combined)}`;
+      }
     },
-    handler: ({ "jud-kw": kw }) => {
-      if (!kw) return null;
-      return `https://www.lawsnote.com/search?q=${encodeURIComponent(kw)}`;
+    handler: ({ "jud-kw": kw, "jud-court": court, "jud-type": type }) => {
+      const combined = [court, type, kw].filter(Boolean).join(" ");
+      if (!combined) return null;
+      return `https://www.lawsnote.com/search?q=${encodeURIComponent(combined)}`;
     }
   },
   {
@@ -96,13 +124,37 @@ const SEARCH_PANELS = [
     icon: "📅",
     desc: "本頁直接從 TaiwanCalendar 取資料，輸入年份即時顯示連假與補班日。",
     inline: "holiday"
+  },
+  {
+    id: "deadline",
+    title: "法定期間計算機",
+    icon: "⏱",
+    desc: "輸入起算日與期間（上訴 20 日、抗告 10 日…），自動依民訴法 §161 扣除週末與國定假日，算出最後一日。",
+    inline: "deadline"
+  },
+  {
+    id: "interest",
+    title: "利息／訴訟費試算",
+    icon: "💰",
+    desc: "民法 §203 法定遲延利息（年息 5%）、民訴法 §77-13 訴訟費用、提存利息等常用公式即時試算。",
+    inline: "interest"
+  },
+  {
+    id: "common-laws",
+    title: "常用法規快速跳轉",
+    icon: "📚",
+    desc: "點一下直接開法規全文，免再輸關鍵字。律師日常 25 部高頻法規。",
+    inline: "commonLaws"
   }
 ];
 
 // 多個 inline 面板的 dispatcher：每種 inline 各自一個 renderer
 const INLINE_RENDERERS = {
   holiday: renderInlineHoliday,
-  company: renderInlineCompany
+  company: renderInlineCompany,
+  deadline: renderInlineDeadline,
+  interest: renderInlineInterest,
+  commonLaws: renderInlineCommonLaws
 };
 
 function renderSearch() {
@@ -122,18 +174,32 @@ function renderSearchPanel(p) {
       <h3><span class="search-icon">${p.icon}</span>${escapeHtml(p.title)}</h3>
       <p class="tagline">${escapeHtml(p.desc)}</p>
       <form class="search-form" data-panel-id="${escapeHtml(p.id)}">
-        ${p.fields.map(f => `
-          <label class="search-label">
-            <span>${escapeHtml(f.label)}</span>
-            <input type="text" id="${escapeHtml(f.id)}" name="${escapeHtml(f.id)}" placeholder="${escapeHtml(f.placeholder)}" autocomplete="off">
-          </label>
-        `).join("")}
+        ${p.fields.map(f => renderField(f)).join("")}
         <div class="search-actions">
           <button type="submit" class="search-btn primary">${escapeHtml(p.btnLabel)}</button>
           ${p.altBtn ? `<button type="button" class="search-btn secondary" data-alt-id="${escapeHtml(p.id)}">${escapeHtml(p.altBtn.label)}</button>` : ""}
         </div>
       </form>
     </div>
+  `;
+}
+
+function renderField(f) {
+  if (f.type === "select") {
+    return `
+      <label class="search-label">
+        <span>${escapeHtml(f.label)}</span>
+        <select id="${escapeHtml(f.id)}" name="${escapeHtml(f.id)}">
+          ${f.options.map(o => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.label)}</option>`).join("")}
+        </select>
+      </label>
+    `;
+  }
+  return `
+    <label class="search-label">
+      <span>${escapeHtml(f.label)}</span>
+      <input type="text" id="${escapeHtml(f.id)}" name="${escapeHtml(f.id)}" placeholder="${escapeHtml(f.placeholder || "")}" autocomplete="off">
+    </label>
   `;
 }
 
@@ -175,6 +241,142 @@ function renderInlineCompany() {
         </div>
       </form>
       <div id="company-result" class="inline-result"></div>
+    </div>
+  `;
+}
+
+// 常用律師期間預設值（民訴／刑訴／行政訴訟混合，依案件類型律師再判斷）
+const DEADLINE_PRESETS = [
+  { label: "上訴 20 日（民訴）", days: 20 },
+  { label: "抗告 10 日", days: 10 },
+  { label: "再審 30 日", days: 30 },
+  { label: "聲明異議 10 日", days: 10 },
+  { label: "刑事上訴 20 日", days: 20 },
+  { label: "行政訴訟 2 個月", days: 60 },
+  { label: "支付命令異議 20 日", days: 20 },
+  { label: "強制執行抗告 10 日", days: 10 }
+];
+
+function renderInlineDeadline() {
+  const p = SEARCH_PANELS.find(x => x.id === "deadline");
+  const today = new Date().toISOString().slice(0, 10);
+  return `
+    <div class="search-card" data-panel="deadline">
+      <h3><span class="search-icon">${p.icon}</span>${escapeHtml(p.title)}</h3>
+      <p class="tagline">${escapeHtml(p.desc)}</p>
+      <form class="search-form" id="deadline-form">
+        <label class="search-label">
+          <span>起算日（不計入當日）</span>
+          <input type="date" id="deadline-start" value="${today}">
+        </label>
+        <label class="search-label">
+          <span>期間（日）</span>
+          <input type="number" id="deadline-days" value="20" min="1" max="365">
+        </label>
+        <div class="deadline-presets">
+          ${DEADLINE_PRESETS.map(p => `<button type="button" class="chip" data-deadline-days="${p.days}">${escapeHtml(p.label)}</button>`).join("")}
+        </div>
+        <div class="search-actions">
+          <button type="submit" class="search-btn primary">計算</button>
+        </div>
+      </form>
+      <div id="deadline-result" class="inline-result"></div>
+    </div>
+  `;
+}
+
+function renderInlineInterest() {
+  const p = SEARCH_PANELS.find(x => x.id === "interest");
+  const today = new Date().toISOString().slice(0, 10);
+  const sixMonthsAgo = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10);
+  return `
+    <div class="search-card" data-panel="interest">
+      <h3><span class="search-icon">${p.icon}</span>${escapeHtml(p.title)}</h3>
+      <p class="tagline">${escapeHtml(p.desc)}</p>
+
+      <div class="calc-tabs">
+        <button type="button" class="calc-tab active" data-calc="interest">遲延利息</button>
+        <button type="button" class="calc-tab" data-calc="court-fee">訴訟費用</button>
+      </div>
+
+      <form class="search-form calc-form" id="interest-form" data-calc="interest">
+        <label class="search-label">
+          <span>本金（元）</span>
+          <input type="number" id="int-principal" value="1000000" min="1" step="1">
+        </label>
+        <label class="search-label">
+          <span>年利率（%）</span>
+          <input type="number" id="int-rate" value="5" min="0" max="50" step="0.1">
+          <small class="hint">法定 5%（民法 §203），約定不得逾 16%（民法 §205）</small>
+        </label>
+        <label class="search-label">
+          <span>起息日（含當日）</span>
+          <input type="date" id="int-from" value="${sixMonthsAgo}">
+        </label>
+        <label class="search-label">
+          <span>截止日（含當日）</span>
+          <input type="date" id="int-to" value="${today}">
+        </label>
+        <div class="search-actions">
+          <button type="submit" class="search-btn primary">計算遲延利息</button>
+        </div>
+      </form>
+
+      <form class="search-form calc-form" id="court-fee-form" data-calc="court-fee" style="display:none">
+        <label class="search-label">
+          <span>訴訟標的金額（元）</span>
+          <input type="number" id="cf-amount" value="1000000" min="1" step="1">
+          <small class="hint">第一審依民訴法 §77-13 累進計算</small>
+        </label>
+        <div class="search-actions">
+          <button type="submit" class="search-btn primary">計算第一審裁判費</button>
+        </div>
+      </form>
+
+      <div id="interest-result" class="inline-result"></div>
+    </div>
+  `;
+}
+
+// 律師日常高頻 25 部法規（含法務部 pcode）
+const COMMON_LAWS = [
+  { name: "民法", code: "B0000001" },
+  { name: "民事訴訟法", code: "B0010001" },
+  { name: "刑法", code: "C0000001" },
+  { name: "刑事訴訟法", code: "C0010001" },
+  { name: "行政程序法", code: "A0030055" },
+  { name: "行政訴訟法", code: "A0030154" },
+  { name: "行政罰法", code: "A0030058" },
+  { name: "公司法", code: "J0080001" },
+  { name: "公平交易法", code: "J0150002" },
+  { name: "消費者保護法", code: "J0170001" },
+  { name: "勞動基準法", code: "N0030001" },
+  { name: "勞工退休金條例", code: "N0030027" },
+  { name: "性別工作平等法", code: "N0030014" },
+  { name: "個人資料保護法", code: "I0050021" },
+  { name: "著作權法", code: "J0070017" },
+  { name: "商標法", code: "J0070001" },
+  { name: "專利法", code: "J0070007" },
+  { name: "土地法", code: "D0060001" },
+  { name: "土地登記規則", code: "D0060037" },
+  { name: "強制執行法", code: "B0010013" },
+  { name: "破產法", code: "B0010030" },
+  { name: "公司重整", code: "J0080014" },
+  { name: "稅捐稽徵法", code: "G0340001" },
+  { name: "所得稅法", code: "G0340003" },
+  { name: "遺產及贈與稅法", code: "G0340072" }
+];
+
+function renderInlineCommonLaws() {
+  const p = SEARCH_PANELS.find(x => x.id === "common-laws");
+  return `
+    <div class="search-card" data-panel="common-laws">
+      <h3><span class="search-icon">${p.icon}</span>${escapeHtml(p.title)}</h3>
+      <p class="tagline">${escapeHtml(p.desc)}</p>
+      <div class="laws-chips">
+        ${COMMON_LAWS.map(l => `<a class="chip law-chip" href="https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=${l.code}" target="_blank" rel="noopener">${escapeHtml(l.name)}</a>`).join("")}
+      </div>
+      <p class="data-credit">資料來源：法務部全國法規資料庫；連結直接開啟法規全文頁</p>
     </div>
   `;
 }
@@ -228,6 +430,18 @@ document.addEventListener("submit", e => {
   }
   if (form.id === "company-form") {
     runCompanyLookup();
+    return;
+  }
+  if (form.id === "deadline-form") {
+    runDeadlineCalc();
+    return;
+  }
+  if (form.id === "interest-form") {
+    runInterestCalc();
+    return;
+  }
+  if (form.id === "court-fee-form") {
+    runCourtFeeCalc();
     return;
   }
 
@@ -567,6 +781,228 @@ function weekDay(w) {
   const map = { "一":"一", "二":"二", "三":"三", "四":"四", "五":"五", "六":"六", "日":"日" };
   return map[w] || w;
 }
+
+// ===== deadline calc =====
+// 依民訴法 §161 準用民法 §120-122：期間以日定者不計算始日，期間末日為例假日者順延至次日
+async function runDeadlineCalc() {
+  const startStr = document.getElementById("deadline-start")?.value;
+  const days = parseInt(document.getElementById("deadline-days")?.value, 10);
+  const out = document.getElementById("deadline-result");
+  if (!out) return;
+  if (!startStr || !days || days < 1) {
+    out.innerHTML = `<p class="error">請輸入有效起算日與期間</p>`;
+    return;
+  }
+  out.innerHTML = `<p class="loading">計算中…</p>`;
+  try {
+    const start = new Date(startStr + "T00:00:00");
+    // 起算日不計入，從次日起算 → 算術上即「+days」（即第 days 日為末日）
+    let end = new Date(start.getTime() + days * 86400000);
+
+    // 需要查詢起算年、結束年、可能跨年的國定假日
+    const years = new Set([start.getFullYear(), end.getFullYear()]);
+    const holidayMap = await fetchHolidays(years);
+
+    // 末日順延：若末日為週六、週日、國定假日，則順延至次一營業日
+    const originalEnd = new Date(end);
+    let postponedDays = 0;
+    while (isOffDay(end, holidayMap)) {
+      end = new Date(end.getTime() + 86400000);
+      postponedDays++;
+      // 跨年的話加查
+      if (!years.has(end.getFullYear())) {
+        years.add(end.getFullYear());
+        const more = await fetchHolidays(new Set([end.getFullYear()]));
+        Object.assign(holidayMap, more);
+      }
+    }
+
+    out.innerHTML = renderDeadlineResult(start, days, originalEnd, end, postponedDays, holidayMap);
+  } catch (err) {
+    out.innerHTML = `<p class="error">計算失敗：${escapeHtml(String(err.message || err))}</p>`;
+  }
+}
+
+async function fetchHolidays(years) {
+  const map = {};
+  for (const y of years) {
+    try {
+      const res = await fetch(`https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/${y}.json`);
+      if (!res.ok) continue;
+      const arr = await res.json();
+      for (const d of arr) {
+        map[d.date] = { isHoliday: !!d.isHoliday, name: d.description || "", week: d.week };
+      }
+    } catch {}
+  }
+  return map;
+}
+
+function isOffDay(date, holidayMap) {
+  const key = date.getFullYear() + String(date.getMonth() + 1).padStart(2, "0") + String(date.getDate()).padStart(2, "0");
+  if (holidayMap[key]) return holidayMap[key].isHoliday;
+  // 無資料時 fallback 用日期 weekday
+  const wd = date.getDay();
+  return wd === 0 || wd === 6;
+}
+
+function renderDeadlineResult(start, days, originalEnd, end, postponedDays, holidayMap) {
+  const fmtJs = d => `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;
+  const weekStr = ["日","一","二","三","四","五","六"][end.getDay()];
+  const postponeNote = postponedDays > 0
+    ? `<p class="deadline-note">原末日為 <b>${fmtJs(originalEnd)}</b>，因為例假日／國定假日，依民法 §122 順延 ${postponedDays} 日。</p>`
+    : "";
+  // 列出順延日當天屬於什麼
+  const key = end.getFullYear() + String(end.getMonth()+1).padStart(2,"0") + String(end.getDate()).padStart(2,"0");
+  const info = holidayMap[key];
+  let endStateNote = "";
+  if (info && info.isHoliday && info.name) {
+    endStateNote = `（最後日為 ${info.name}? 不會，依法已順延）`;
+  }
+
+  return `
+    <div class="deadline-card">
+      <div class="deadline-headline">
+        <div class="deadline-label">最後期間</div>
+        <div class="deadline-date">${fmtJs(end)}<span class="deadline-week">（星期${weekStr}）</span></div>
+      </div>
+      <dl class="deadline-facts">
+        <dt>起算日</dt><dd>${fmtJs(start)}（不計入當日）</dd>
+        <dt>期間</dt><dd>${days} 日</dd>
+        <dt>原末日</dt><dd>${fmtJs(originalEnd)}</dd>
+        ${postponedDays > 0 ? `<dt>順延</dt><dd>+${postponedDays} 日 → ${fmtJs(end)}</dd>` : ""}
+      </dl>
+      ${postponeNote}
+      <p class="data-credit">依民法 §120-122 / 民訴法 §161 / 行政程序法 §48；資料來源：<a href="https://github.com/ruyut/TaiwanCalendar" target="_blank" rel="noopener">TaiwanCalendar</a>（行政院人事行政總處公告）。實際適用請以審理法院認定為準。</p>
+    </div>
+  `;
+}
+
+document.addEventListener("click", e => {
+  const chip = e.target.closest("[data-deadline-days]");
+  if (!chip) return;
+  const days = chip.dataset.deadlineDays;
+  const input = document.getElementById("deadline-days");
+  if (input) {
+    input.value = days;
+    runDeadlineCalc();
+  }
+});
+
+// ===== interest calc =====
+// 民法 §203 法定遲延利息年息 5%；計算 = 本金 × 年利率 × 日數 / 365
+function runInterestCalc() {
+  const principal = parseFloat(document.getElementById("int-principal")?.value);
+  const rate = parseFloat(document.getElementById("int-rate")?.value);
+  const fromStr = document.getElementById("int-from")?.value;
+  const toStr = document.getElementById("int-to")?.value;
+  const out = document.getElementById("interest-result");
+  if (!out) return;
+  if (!principal || principal <= 0 || rate < 0 || rate > 100 || !fromStr || !toStr) {
+    out.innerHTML = `<p class="error">請輸入有效本金、利率與日期</p>`;
+    return;
+  }
+  const from = new Date(fromStr + "T00:00:00");
+  const to = new Date(toStr + "T00:00:00");
+  if (to < from) {
+    out.innerHTML = `<p class="error">截止日不得早於起息日</p>`;
+    return;
+  }
+  // 含當日：日數 = 兩日之差 + 1
+  const days = Math.round((to - from) / 86400000) + 1;
+  const interest = principal * (rate / 100) * days / 365;
+  const total = principal + interest;
+
+  const fmt = n => n.toLocaleString("zh-TW", { maximumFractionDigits: 0 });
+  out.innerHTML = `
+    <div class="calc-card">
+      <div class="calc-headline">
+        <div class="calc-label">遲延利息</div>
+        <div class="calc-amount">NT$ ${fmt(interest)}</div>
+      </div>
+      <dl class="deadline-facts">
+        <dt>本金</dt><dd>NT$ ${fmt(principal)}</dd>
+        <dt>年利率</dt><dd>${rate}%</dd>
+        <dt>起息日</dt><dd>${fromStr}</dd>
+        <dt>截止日</dt><dd>${toStr}</dd>
+        <dt>計息天數</dt><dd>${days} 日（含首尾）</dd>
+        <dt>本息合計</dt><dd><b>NT$ ${fmt(total)}</b></dd>
+      </dl>
+      <p class="data-credit">公式：本金 × 年利率 × 日數 / 365（民法 §203 法定 5%；最高 16% 民法 §205）。書狀引用請以實際法院認定為準。</p>
+    </div>
+  `;
+}
+
+// ===== court fee calc =====
+// 民訴法 §77-13：第一審依訴訟標的金額累進計算
+// - 10 萬以下：1,000 元
+// - 10 萬 ~ 100 萬：每 1 萬加收 110 元（即 1.1%）
+// - 100 萬 ~ 1000 萬：每 1 萬加收 99 元（即 0.99%）
+// - 1000 萬 ~ 1 億：每 1 萬加收 88 元（即 0.88%）
+// - 1 億 ~ 10 億：每 1 萬加收 77 元（即 0.77%）
+// - 10 億以上：每 1 萬加收 66 元（即 0.66%）
+function calcFirstInstanceCourtFee(amount) {
+  if (amount <= 0) return 0;
+  if (amount <= 100000) return 1000;
+  let fee = 1000;
+  // 10 萬 ~ 100 萬：再加 (amount-10萬) × 1.1%
+  const tiers = [
+    { from: 100000, to: 1000000, ratePerWan: 110 },
+    { from: 1000000, to: 10000000, ratePerWan: 99 },
+    { from: 10000000, to: 100000000, ratePerWan: 88 },
+    { from: 100000000, to: 1000000000, ratePerWan: 77 },
+    { from: 1000000000, to: Infinity, ratePerWan: 66 }
+  ];
+  for (const t of tiers) {
+    if (amount <= t.from) break;
+    const upper = Math.min(amount, t.to);
+    const wanInTier = (upper - t.from) / 10000;
+    fee += wanInTier * t.ratePerWan;
+  }
+  return Math.ceil(fee);
+}
+
+function runCourtFeeCalc() {
+  const amount = parseFloat(document.getElementById("cf-amount")?.value);
+  const out = document.getElementById("interest-result");
+  if (!out) return;
+  if (!amount || amount <= 0) {
+    out.innerHTML = `<p class="error">請輸入有效訴訟標的金額</p>`;
+    return;
+  }
+  const first = calcFirstInstanceCourtFee(amount);
+  const second = Math.ceil(first * 1.5); // 第二、三審加徵 1/2 → 1.5 倍（§77-16）
+  const third = second;
+  const fmt = n => n.toLocaleString("zh-TW", { maximumFractionDigits: 0 });
+  out.innerHTML = `
+    <div class="calc-card">
+      <div class="calc-headline">
+        <div class="calc-label">第一審裁判費</div>
+        <div class="calc-amount">NT$ ${fmt(first)}</div>
+      </div>
+      <dl class="deadline-facts">
+        <dt>訴訟標的金額</dt><dd>NT$ ${fmt(amount)}</dd>
+        <dt>第一審</dt><dd>NT$ ${fmt(first)}</dd>
+        <dt>第二審（+1/2）</dt><dd>NT$ ${fmt(second)}</dd>
+        <dt>第三審（+1/2）</dt><dd>NT$ ${fmt(third)}</dd>
+      </dl>
+      <p class="data-credit">依民訴法 §77-13（第一審累進）、§77-16（第二、三審加徵 1/2）。家事、刑事附帶民事、行政訴訟另有規定。</p>
+    </div>
+  `;
+}
+
+// 切換利息／訴訟費 tab
+document.addEventListener("click", e => {
+  const tab = e.target.closest(".calc-tab");
+  if (!tab) return;
+  const which = tab.dataset.calc;
+  document.querySelectorAll(".calc-tab").forEach(t => t.classList.toggle("active", t.dataset.calc === which));
+  document.querySelectorAll(".calc-form").forEach(f => {
+    f.style.display = f.dataset.calc === which ? "" : "none";
+  });
+  const out = document.getElementById("interest-result");
+  if (out) out.innerHTML = "";
+});
 
 // ===== back to top =====
 const backTop = $("#back-to-top");

@@ -1008,6 +1008,174 @@ body {
   .company-tag { background: #173943; color: #cfe8ee; }
 }
 
+/* ===== select field ===== */
+.search-label select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 32px 9px 12px;
+  font-size: 14px;
+  width: 100%;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-mute) 50%), linear-gradient(135deg, var(--text-mute) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+.search-label select:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(1, 154, 179, 0.15);
+}
+
+/* ===== chips (deadline presets / laws chips) ===== */
+.chip {
+  display: inline-block;
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  margin: 3px 4px 3px 0;
+  text-decoration: none;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.chip:hover {
+  background: var(--accent-softer);
+  border-color: var(--brand-primary);
+  color: var(--brand-deep);
+}
+.deadline-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 6px 0;
+}
+.laws-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 8px;
+}
+.law-chip {
+  background: var(--accent-softer);
+  border-color: var(--accent-soft);
+  color: var(--brand-deep);
+  font-weight: 500;
+}
+.law-chip:hover {
+  background: var(--accent-soft);
+  color: var(--brand-deep);
+}
+@media (prefers-color-scheme: dark) {
+  .chip { color: #d6ecf2; }
+  .law-chip { background: #173943; color: #cfe8ee; border-color: #244a55; }
+}
+
+/* ===== deadline / calc card ===== */
+.deadline-card, .calc-card {
+  font-size: 13.5px;
+}
+.deadline-headline, .calc-headline {
+  background: linear-gradient(135deg, var(--accent-softer), var(--accent-soft));
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.deadline-label, .calc-label {
+  color: var(--brand-deep);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.deadline-date, .calc-amount {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--brand-deep);
+  line-height: 1.1;
+}
+.deadline-week {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-mute);
+  margin-left: 6px;
+}
+.deadline-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 14px;
+  row-gap: 4px;
+  margin: 10px 0 12px;
+  font-size: 13px;
+}
+.deadline-facts dt {
+  color: var(--text-mute);
+  font-weight: 500;
+}
+.deadline-facts dd {
+  margin: 0;
+  color: var(--text);
+}
+.deadline-note {
+  font-size: 12.5px;
+  background: #fff7e6;
+  border-left: 3px solid var(--accent-warm);
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin: 8px 0;
+  color: #6a4a00;
+}
+@media (prefers-color-scheme: dark) {
+  .deadline-headline, .calc-headline {
+    background: linear-gradient(135deg, #122c33, #173943);
+  }
+  .deadline-label, .calc-label, .deadline-date, .calc-amount { color: #d6ecf2; }
+  .deadline-note { background: #2a2410; color: #f3d68f; border-color: var(--accent-warm); }
+}
+
+/* ===== calc tabs ===== */
+.calc-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.calc-tab {
+  background: none;
+  border: none;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-mute);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-family: inherit;
+}
+.calc-tab.active {
+  color: var(--brand-primary);
+  border-bottom-color: var(--brand-primary);
+}
+.calc-tab:hover { color: var(--brand-deep); }
+.search-label .hint {
+  display: block;
+  font-size: 11px;
+  color: var(--text-mute);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
 /* mobile tweaks */
 @media (max-width: 600px) {
   .topbar { padding: 18px 18px 14px; }
